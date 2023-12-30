@@ -1,20 +1,30 @@
-'use client'
+"use client";
 
 import Quill from "quill";
 import QuillCursors from "quill-cursors";
 import { useEffect, useRef } from "react";
+import { QuillBinding } from "y-quill";
+import { WebrtcProvider } from "y-webrtc";
+import * as Y from "yjs";
 
-import 'quill/dist/quill.core.css'
-import 'quill/dist/quill.snow.css'
+import "quill/dist/quill.core.css";
+import "quill/dist/quill.snow.css";
 
 export default function QuillEditor() {
-  const quill = useRef<any | null>(null);
+  const quill = useRef<Quill | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (quill.current || !containerRef.current || typeof window === 'undefined' || typeof document === 'undefined') {
+    if (
+      quill.current ||
+      !containerRef.current ||
+      typeof window === "undefined" ||
+      typeof document === "undefined"
+    ) {
       return;
     }
+
+    // Initialize quill
     Quill.register("modules/cursors", QuillCursors);
     quill.current = new Quill(containerRef.current, {
       modules: {
@@ -34,6 +44,12 @@ export default function QuillEditor() {
       placeholder: "Start collaborating...",
       theme: "snow", // 'bubble' is also great
     });
+
+    // Initialize shared document
+    const yDoc = new Y.Doc();
+    const yText = yDoc.getText("quill");
+    const binding = new QuillBinding(yText, quill.current);
+    const provider = new WebrtcProvider("quill-demo-room", yDoc);
   }, []);
 
   return (
