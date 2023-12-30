@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { QuillBinding } from "y-quill";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
+import { IndexeddbPersistence } from "y-indexeddb";
 
 import "quill/dist/quill.core.css";
 import "quill/dist/quill.snow.css";
@@ -49,15 +50,20 @@ export default function QuillEditor() {
     const yDoc = new Y.Doc();
     const yText = yDoc.getText("quill");
     const provider = new WebrtcProvider("quill-demo-room", yDoc);
+    const persistence = new IndexeddbPersistence("quill-demo-room", yDoc);
 
     // Initialize awareness
     const awareness = provider.awareness;
-    awareness.on('change', () => {
+    awareness.on("change", () => {
       console.log(Array.from(awareness.getStates().values()));
-    })
+    });
     awareness.setLocalStateField("user", {
       name: Math.random(),
       color: "#ffb61e",
+    });
+
+    persistence.once("synced", () => {
+      console.log("initial content loaded");
     });
 
     // Bind to editor
