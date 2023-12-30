@@ -48,8 +48,20 @@ export default function QuillEditor() {
     // Initialize shared document
     const yDoc = new Y.Doc();
     const yText = yDoc.getText("quill");
-    const binding = new QuillBinding(yText, quill.current);
     const provider = new WebrtcProvider("quill-demo-room", yDoc);
+
+    // Initialize awareness
+    const awareness = provider.awareness;
+    awareness.on('change', () => {
+      console.log(Array.from(awareness.getStates().values()));
+    })
+    awareness.setLocalStateField("user", {
+      name: Math.random(),
+      color: "#ffb61e",
+    });
+
+    // Bind to editor
+    const binding = new QuillBinding(yText, quill.current, awareness);
   }, []);
 
   return (
