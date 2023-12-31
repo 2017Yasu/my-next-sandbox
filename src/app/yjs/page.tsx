@@ -9,6 +9,9 @@ export default function YjsPage() {
                     <li>
                         <Link href='/yjs/quill'>Quill</Link>
                     </li>
+                    <li>
+                        <Link href='/yjs/draw'>Draw</Link>
+                    </li>
                 </ul>
             </div>
         </div>
