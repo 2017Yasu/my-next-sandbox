@@ -10,6 +10,9 @@ export default function YjsPage() {
         <li>
           <Link href="/yjs/draw">Draw</Link>
         </li>
+        <li>
+          <Link href="/yjs/todo">ToDo</Link>
+        </li>
       </ul>
     </div>
   );
