@@ -26,8 +26,7 @@ export default function D3Drawer() {
       .append("circle")
       .attr("cx", 150)
       .attr("cy", 70)
-      .attr("r", 50)
-      .attr("fill", "white");
+      .attr("r", 50);
   }, []);
 
   const onStartDrawing = useCallback(() => {
@@ -40,7 +39,7 @@ export default function D3Drawer() {
           { x: 1, y: 1 },
           { x: 50, y: 50 },
         ],
-        stroke: "white",
+        stroke: 'black'
       })
     );
   }, []);
