@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
 import TodoItem from "./todo-item";
+import { useEffectOnce } from "@/hooks";
 
 type TodoItemType = {
   id: string;
@@ -12,7 +13,6 @@ type TodoItemType = {
 };
 
 export default function TodoList() {
-  const initialized = useRef(false);
   const yDoc = useRef<Y.Doc | null>(null);
   const yArray = useRef<Y.Array<TodoItemType> | null>(null);
   const webrtc = useRef<WebrtcProvider | null>(null);
@@ -27,18 +27,12 @@ export default function TodoList() {
     []
   );
 
-  useEffect(() => {
-    console.log("initializing");
-    if (initialized.current) {
-      console.log("it has already initialized");
-      return;
-    }
-    initialized.current = true;
+  useEffectOnce(() => {
+    console.log('initializing');
     yDoc.current = new Y.Doc();
-    webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current);
+    webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current)
     yArray.current = yDoc.current.getArray<TodoItemType>("todo list");
-    console.log("initialized");
-  }, []);
+  })
 
   useEffect(() => {
     yArray.current?.observe(onYArrayChange);
