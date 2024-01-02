@@ -1,67 +1,127 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import * as d3 from "d3";
+import { useEffectOnce } from "@/hooks";
 import { DrawnElement } from "@/types";
+import * as d3 from "d3";
+import {
+  PointerEvent,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { WebrtcProvider } from "y-webrtc";
+import * as Y from "yjs";
 import DrawnElementComponent from "./drawn-element";
 
 export default function D3Drawer() {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const svgElements = useRef<d3.Selection<
-    SVGSVGElement,
-    unknown,
-    null,
-    undefined
-  > | null>(null);
+  const yDoc = useRef<Y.Doc | null>(null);
+  const yArray = useRef<Y.Array<DrawnElement> | null>(null);
+  const webrtc = useRef<WebrtcProvider | null>(null);
+  const ref = useRef<SVGSVGElement>(null);
 
   const [drawing, setDrawing] = useState(false);
+  const [drawingElement, setDrawingElement] = useState<DrawnElement>();
+  const [trackedPoints, setTrackedPoints] =
+    useState<Array<{ x: number; y: number }>>();
   const [data, setData] = useState<Array<DrawnElement>>([]);
 
+  useEffectOnce(() => {
+    yDoc.current = new Y.Doc();
+    webrtc.current = new WebrtcProvider("drawer-room", yDoc.current);
+    yArray.current = yDoc.current.getArray<DrawnElement>("drawn element list");
+  });
+
+  const onYArrayChange = useCallback(
+    (e: Y.YArrayEvent<DrawnElement>, tx: Y.Transaction) => {
+      setData(e.target.toArray());
+    },
+    []
+  );
+
   useEffect(() => {
-    if (!svgRef.current || svgElements.current) {
-      return;
-    }
-    svgElements.current = d3.select(svgRef.current);
-    svgElements.current
-      .append("circle")
-      .attr("cx", 150)
-      .attr("cy", 70)
-      .attr("r", 50);
-  }, []);
+    yArray.current?.observe(onYArrayChange);
+    return () => {
+      yArray.current?.unobserve(onYArrayChange);
+    };
+  }, [onYArrayChange]);
 
-  const onStartDrawing = useCallback(() => {
-    console.log("start drawing");
+  const handleStartDrawing = useCallback((e: PointerEvent<SVGSVGElement>) => {
     setDrawing(true);
-    setData((x) =>
-      x.concat({
-        elementName: "path",
-        points: [
-          { x: 1, y: 1 },
-          { x: 50, y: 50 },
-        ],
-        stroke: 'black'
-      })
-    );
+    const points = [getRelativePosition(ref, e)];
+    setTrackedPoints(points);
+    setDrawingElement({
+      elementName: "path",
+      d: toPathData(points),
+      fill: "none",
+      stroke: "black",
+      strokeWidth: 1,
+    });
   }, []);
 
-  const onFinishDrawing = useCallback(() => {
+  const handleDrawElement = useCallback(
+    (points: Array<{ x: number; y: number }> | undefined) => {
+      setTrackedPoints(points);
+      setDrawingElement((x) => {
+        if (x?.elementName === "path") {
+          return { ...x, d: toPathData(points) };
+        }
+        return undefined;
+      });
+    },
+    []
+  );
+
+  const handleFinishDrawing = useCallback(() => {
     console.log("finish drawing");
     setDrawing(false);
   }, []);
 
   return (
     <svg
-      ref={svgRef}
+      ref={ref}
       width="100%"
       height="100%"
-      onPointerDown={onStartDrawing}
-      onPointerUp={onFinishDrawing}
+      onPointerDown={handleStartDrawing}
+      onPointerUp={handleFinishDrawing}
+      onPointerMove={(e) => {
+        if (drawing) {
+          handleDrawElement(trackedPoints?.concat(getRelativePosition(ref, e)));
+        }
+      }}
     >
       {data.length > 0
         ? data.map((x, i) => (
-            <DrawnElementComponent key={`${x.elementName}${i}`} elem={x} />
+            <DrawnElementComponent key={`${x.elementName}_${i}`} {...x} />
           ))
         : undefined}
+      {drawingElement && (
+        <DrawnElementComponent
+          key={`${drawingElement.elementName}_${data.length}`}
+          {...drawingElement}
+        />
+      )}
     </svg>
   );
+}
+
+function getRelativePosition(ref: RefObject<Element | null>, e: PointerEvent) {
+  const bounds = ref.current?.getBoundingClientRect();
+  return {
+    x: e.clientX - (bounds?.left ?? 0),
+    y: e.clientY - (bounds?.top ?? 0),
+  };
+}
+
+function toPathData(points: Array<{ x: number; y: number }> | undefined) {
+  const path = d3.path();
+  if (!points || points.length < 1) {
+    return "";
+  }
+  path.moveTo(points[0].x, points[0].y);
+  for (const p of points) {
+    path.lineTo(p.x, p.y);
+  }
+  return path.toString();
 }

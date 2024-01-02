@@ -8,7 +8,6 @@ export default function DrawPage() {
         style={{
           width: "800px",
           height: "500px",
-          border: "2px solid",
           margin: "5px",
           backgroundColor: "white",
         }}

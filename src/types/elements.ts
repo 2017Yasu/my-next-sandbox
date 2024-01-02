@@ -1,20 +1,16 @@
+import { SVGProps } from "react";
+
 export interface DrawnElementBase<ElemName extends string> {
-    elementName: ElemName;
-    stroke?: string | undefined;
-    strokeWidth?: number | undefined;
-    fill?: string | undefined;
+  elementName: ElemName;
 }
 
-export interface DrawnPath extends DrawnElementBase<"path"> {
-  points: Array<{ x: number; y: number }>;
-}
+export interface DrawnPath
+  extends DrawnElementBase<"path">,
+    SVGProps<SVGPathElement> {}
 
-export interface DrawnEllipse extends DrawnElementBase<"ellipse"> {
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-}
+export interface DrawnEllipse
+  extends DrawnElementBase<"ellipse">,
+    SVGProps<SVGEllipseElement> {}
 
 export type DrawnElement = DrawnPath | DrawnEllipse;
 export type DrawnElementType = DrawnElement["elementName"];
