@@ -27,7 +27,7 @@ export default function TodoItem({
         onDescriptionChange(e.target.value);
       }
     },
-    [onDescriptionChange]
+    [onDescriptionChange],
   );
 
   return (

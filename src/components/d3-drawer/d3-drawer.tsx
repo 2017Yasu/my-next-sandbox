@@ -37,7 +37,7 @@ export default function D3Drawer() {
     (e: Y.YArrayEvent<DrawnElement>, tx: Y.Transaction) => {
       setData(e.target.toArray());
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -70,16 +70,19 @@ export default function D3Drawer() {
         return undefined;
       });
     },
-    []
+    [],
   );
 
-  const handleFinishDrawing = useTransaction(yDoc, useCallback((elem: DrawnElement | undefined) => {
-    setDrawing(false);
-    if (!yArray.current || !elem) {
-      return;
-    }
-    yArray.current.push([elem]);
-  }, []))
+  const handleFinishDrawing = useTransaction(
+    yDoc,
+    useCallback((elem: DrawnElement | undefined) => {
+      setDrawing(false);
+      if (!yArray.current || !elem) {
+        return;
+      }
+      yArray.current.push([elem]);
+    }, []),
+  );
 
   return (
     <svg

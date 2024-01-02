@@ -8,7 +8,7 @@ export default function PathElement(props: DrawnPath) {
   const pathProps = useMemo(() => {
     const tmp = { ...props, elementName: undefined };
     delete tmp.elementName;
-    return tmp
+    return tmp;
   }, [props]);
   return <path ref={ref} {...pathProps} />;
 }

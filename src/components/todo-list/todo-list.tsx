@@ -23,7 +23,7 @@ export default function TodoList() {
     (e: Y.YArrayEvent<TodoItemType>, tx: Y.Transaction) => {
       setTodoList(e.target.toArray());
     },
-    []
+    [],
   );
 
   useEffectOnce(() => {
@@ -48,7 +48,7 @@ export default function TodoList() {
       const target = yArray.current.get(index);
       yArray.current.delete(index);
       yArray.current.insert(index, [{ ...target, done }]);
-    }, [])
+    }, []),
   );
 
   const handleDescriptionChanged = useTransaction(
@@ -60,7 +60,7 @@ export default function TodoList() {
       const target = yArray.current.get(index);
       yArray.current.delete(index);
       yArray.current.insert(index, [{ ...target, description }]);
-    }, [])
+    }, []),
   );
 
   const handleAddNewItem = useTransaction(
@@ -76,7 +76,7 @@ export default function TodoList() {
           description: "",
         },
       ]);
-    }, [])
+    }, []),
   );
 
   return (

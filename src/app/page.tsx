@@ -1,5 +1,5 @@
-import Image from 'next/image'
-import styles from './page.module.css'
+import Image from "next/image";
+import styles from "./page.module.css";
 
 export default function Home() {
   return (
@@ -15,7 +15,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            By{' '}
+            By{" "}
             <Image
               src="/vercel.svg"
               alt="Vercel Logo"
@@ -52,10 +52,7 @@ export default function Home() {
           <p>Find in-depth information about Next.js features and API.</p>
         </a>
 
-        <a
-          href="/yjs"
-          className={styles.card}
-        >
+        <a href="/yjs" className={styles.card}>
           <h2>
             Yjs <span>-&gt;</span>
           </h2>
@@ -63,5 +60,5 @@ export default function Home() {
         </a>
       </div>
     </main>
-  )
+  );
 }
