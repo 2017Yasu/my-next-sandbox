@@ -2,31 +2,33 @@
 
 import Quill from "quill";
 import QuillCursors from "quill-cursors";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { IndexeddbPersistence } from "y-indexeddb";
 import { QuillBinding } from "y-quill";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { IndexeddbPersistence } from "y-indexeddb";
 
+import { useEffectOnce } from "@/hooks";
 import "quill/dist/quill.core.css";
 import "quill/dist/quill.snow.css";
+
+Quill.register("modules/cursors", QuillCursors);
 
 export default function QuillEditor() {
   const quill = useRef<Quill | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const yDoc = useRef<Y.Doc | null>(null);
+  const yText = useRef<Y.Text | null>(null);
+  const webrtc = useRef<WebrtcProvider | null>(null);
+  const indexDB = useRef<IndexeddbPersistence | null>(null);
+  const binding = useRef<QuillBinding | null>(null);
 
-  useEffect(() => {
-    if (
-      quill.current ||
-      !containerRef.current ||
-      typeof window === "undefined" ||
-      typeof document === "undefined"
-    ) {
+  useEffectOnce(() => {
+    if (!containerRef.current) {
       return;
     }
 
     // Initialize quill
-    Quill.register("modules/cursors", QuillCursors);
     quill.current = new Quill(containerRef.current, {
       modules: {
         cursors: true,
@@ -47,13 +49,13 @@ export default function QuillEditor() {
     });
 
     // Initialize shared document
-    const yDoc = new Y.Doc();
-    const yText = yDoc.getText("quill");
-    const provider = new WebrtcProvider("quill-demo-room", yDoc);
-    const persistence = new IndexeddbPersistence("quill-demo-room", yDoc);
+    yDoc.current = new Y.Doc();
+    yText.current = yDoc.current.getText("quill");
+    webrtc.current = new WebrtcProvider("quill-demo-room", yDoc.current);
+    indexDB.current = new IndexeddbPersistence("quill-demo-room", yDoc.current);
 
     // Initialize awareness
-    const awareness = provider.awareness;
+    const awareness = webrtc.current.awareness;
     awareness.on("change", () => {
       console.log(Array.from(awareness.getStates().values()));
     });
@@ -62,13 +64,20 @@ export default function QuillEditor() {
       color: "#ffb61e",
     });
 
-    persistence.once("synced", () => {
+    indexDB.current.once("synced", () => {
       console.log("initial content loaded");
     });
 
     // Bind to editor
-    const binding = new QuillBinding(yText, quill.current, awareness);
-  }, []);
+    binding.current = new QuillBinding(yText.current, quill.current, awareness);
+
+    return () => {
+      yDoc.current?.destroy();
+      webrtc.current?.destroy();
+      indexDB.current?.destroy();
+      binding.current?.destroy();
+    };
+  });
 
   return (
     <div className="editor">

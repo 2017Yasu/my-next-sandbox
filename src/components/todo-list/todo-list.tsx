@@ -30,6 +30,10 @@ export default function TodoList() {
     yDoc.current = new Y.Doc();
     webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current);
     yArray.current = yDoc.current.getArray<TodoItemType>("todo list");
+    return () => {
+      yDoc.current?.destroy();
+      webrtc.current?.destroy();
+    };
   });
 
   useEffect(() => {

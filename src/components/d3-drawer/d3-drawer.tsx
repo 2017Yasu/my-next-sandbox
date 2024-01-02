@@ -31,6 +31,10 @@ export default function D3Drawer() {
     yDoc.current = new Y.Doc();
     webrtc.current = new WebrtcProvider("drawer-room", yDoc.current);
     yArray.current = yDoc.current.getArray<DrawnElement>("drawn element list");
+    return () => {
+      yDoc.current?.destroy();
+      webrtc.current?.destroy();
+    };
   });
 
   const onYArrayChange = useCallback(

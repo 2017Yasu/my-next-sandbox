@@ -3,13 +3,26 @@
 import { EffectCallback, useEffect, useRef } from "react";
 
 export function useEffectOnce(effect: EffectCallback) {
-  const called = useRef(false);
+  const calledAt = useRef(0);
+  const destructor = useRef<ReturnType<EffectCallback> | null>(null);
   useEffect(() => {
-    if (called.current) {
+    if (calledAt.current) {
+      if (destructor.current) {
+        return destructor.current;
+      }
       return;
     }
-    called.current = true;
-    return effect();
+    calledAt.current = new Date().getTime();
+    const fn = effect();
+    if (fn) {
+      destructor.current = () => {
+        const elapsed = new Date().getTime() - calledAt.current;
+        if (elapsed > 100) {
+          fn();
+        }
+      };
+      return destructor.current;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
