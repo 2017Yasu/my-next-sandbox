@@ -17,7 +17,6 @@ export function useTransaction<T extends VoidCallback>(
     if (!yDoc.current) {
       return;
     }
-    console.log("begin transaction", args);
     yDoc.current.transact(() => {
       callback(...args);
     });

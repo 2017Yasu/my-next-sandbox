@@ -21,14 +21,12 @@ export default function TodoList() {
 
   const onYArrayChange = useCallback(
     (e: Y.YArrayEvent<TodoItemType>, tx: Y.Transaction) => {
-      console.log("yArray changed");
       setTodoList(e.target.toArray());
     },
     []
   );
 
   useEffectOnce(() => {
-    console.log("initializing");
     yDoc.current = new Y.Doc();
     webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current);
     yArray.current = yDoc.current.getArray<TodoItemType>("todo list");
