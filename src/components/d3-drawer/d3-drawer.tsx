@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectOnce } from "@/hooks";
+import { useEffectOnce, useTransaction } from "@/hooks";
 import { DrawnElement } from "@/types";
 import * as d3 from "d3";
 import {
@@ -73,10 +73,13 @@ export default function D3Drawer() {
     []
   );
 
-  const handleFinishDrawing = useCallback(() => {
-    console.log("finish drawing");
+  const handleFinishDrawing = useTransaction(yDoc, useCallback((elem: DrawnElement | undefined) => {
     setDrawing(false);
-  }, []);
+    if (!yArray.current || !elem) {
+      return;
+    }
+    yArray.current.push([elem]);
+  }, []))
 
   return (
     <svg
@@ -84,7 +87,11 @@ export default function D3Drawer() {
       width="100%"
       height="100%"
       onPointerDown={handleStartDrawing}
-      onPointerUp={handleFinishDrawing}
+      onPointerUp={() => {
+        if (drawing) {
+          handleFinishDrawing(drawingElement);
+        }
+      }}
       onPointerMove={(e) => {
         if (drawing) {
           handleDrawElement(trackedPoints?.concat(getRelativePosition(ref, e)));

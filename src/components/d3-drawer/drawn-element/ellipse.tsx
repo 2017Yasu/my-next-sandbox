@@ -1,5 +1,11 @@
 import { DrawnEllipse } from "@/types";
+import { useMemo } from "react";
 
-export default function EllipseElement({}: DrawnEllipse) {
-  return <ellipse cx="100" cy="50" rx="100" ry="50" />;
+export default function EllipseElement(props: DrawnEllipse) {
+  const ellipseProps = useMemo(() => {
+    const tmp = { ...props, elementName: undefined };
+    delete tmp.elementName;
+    return tmp;
+  }, [props]);
+  return <ellipse {...ellipseProps} />;
 }
