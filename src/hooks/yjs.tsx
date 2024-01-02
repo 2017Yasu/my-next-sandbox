@@ -3,7 +3,7 @@
 import { RefObject } from "react";
 import * as Y from "yjs";
 
-type VoidCallback = (...args: any) => void | Promise<void>;
+type VoidCallback = (...args: any[]) => void | Promise<void>;
 
 type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any
   ? A
