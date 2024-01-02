@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffectOnce, useTransaction } from "@/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as Y from "yjs";
 import { WebrtcProvider } from "y-webrtc";
+import * as Y from "yjs";
 import TodoItem from "./todo-item";
-import { useEffectOnce } from "@/hooks";
 
 type TodoItemType = {
   id: string;
@@ -28,11 +28,11 @@ export default function TodoList() {
   );
 
   useEffectOnce(() => {
-    console.log('initializing');
+    console.log("initializing");
     yDoc.current = new Y.Doc();
-    webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current)
+    webrtc.current = new WebrtcProvider("todo-list-room", yDoc.current);
     yArray.current = yDoc.current.getArray<TodoItemType>("todo list");
-  })
+  });
 
   useEffect(() => {
     yArray.current?.observe(onYArrayChange);
@@ -41,27 +41,44 @@ export default function TodoList() {
     };
   }, [onYArrayChange]);
 
-  const onDoneStateChange = useCallback((index: number, done: boolean) => {
-    // setTodoList((x) => {
-    //   const target: TodoItemType = { ...x[index], done };
-    //   return x
-    //     .slice(0, index)
-    //     .concat([target])
-    //     .concat(x.slice(index + 1));
-    // });
-  }, []);
+  const handleDoneChanged = useTransaction(
+    yDoc,
+    useCallback((index: number, done: boolean) => {
+      if (!yArray.current || index >= yArray.current.length) {
+        return;
+      }
+      const target = yArray.current.get(index);
+      yArray.current.delete(index);
+      yArray.current.insert(index, [{ ...target, done }]);
+    }, [])
+  );
 
-  const onDescriptionChange = useCallback(
-    (index: number, description: string) => {
-      // setTodoList((x) => {
-      //   const target: TodoItemType = { ...x[index], description };
-      //   return x
-      //     .slice(0, index)
-      //     .concat([target])
-      //     .concat(x.slice(index + 1));
-      // });
-    },
-    []
+  const handleDescriptionChanged = useTransaction(
+    yDoc,
+    useCallback((index: number, description: string) => {
+      if (!yArray.current || index >= yArray.current.length) {
+        return;
+      }
+      const target = yArray.current.get(index);
+      yArray.current.delete(index);
+      yArray.current.insert(index, [{ ...target, description }]);
+    }, [])
+  );
+
+  const handleAddNewItem = useTransaction(
+    yDoc,
+    useCallback(() => {
+      if (!yArray.current) {
+        return;
+      }
+      yArray.current.push([
+        {
+          id: crypto.randomUUID(),
+          done: false,
+          description: "",
+        },
+      ]);
+    }, [])
   );
 
   return (
@@ -70,24 +87,12 @@ export default function TodoList() {
         <TodoItem
           {...x}
           key={x.id}
-          onDoneChange={(v) => onDoneStateChange(i, v)}
-          onDescriptionChange={(v) => onDescriptionChange(i, v)}
+          onDoneChange={(v) => handleDoneChanged(i, v)}
+          onDescriptionChange={(v) => handleDescriptionChanged(i, v)}
         />
       ))}
       <div>
-        <button
-          onClick={() => {
-            yArray.current?.push([
-              {
-                id: Math.random().toString(),
-                done: false,
-                description: Math.random().toString(),
-              },
-            ]);
-          }}
-        >
-          Add
-        </button>
+        <button onClick={handleAddNewItem}>Add</button>
       </div>
     </div>
   );
