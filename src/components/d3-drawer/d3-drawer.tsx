@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffectOnce, useTransaction } from "@/hooks";
-import { DrawnElement } from "@/types";
+import { DrawnElement, Point, User } from "@/types";
+import { FIELD_NAMES, parseAwareness } from "@/utils";
 import * as d3 from "d3";
 import {
   PointerEvent,
@@ -15,22 +16,31 @@ import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import DrawnElementComponent from "./drawn-element";
 
+type Pointer = {
+  clientId: number;
+  user?: User;
+  position?: Point;
+  pressed?: boolean;
+};
+
 export default function D3Drawer() {
   const yDoc = useRef<Y.Doc | null>(null);
   const yArray = useRef<Y.Array<DrawnElement> | null>(null);
   const webrtc = useRef<WebrtcProvider | null>(null);
   const ref = useRef<SVGSVGElement>(null);
 
+  const [initialized, setInitialized] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [drawingElement, setDrawingElement] = useState<DrawnElement>();
-  const [trackedPoints, setTrackedPoints] =
-    useState<Array<{ x: number; y: number }>>();
-  const [data, setData] = useState<Array<DrawnElement>>([]);
+  const [trackedPoints, setTrackedPoints] = useState<Point[]>();
+  const [data, setData] = useState<DrawnElement[]>([]);
+  const [pointers, setPointers] = useState<Pointer[]>([]);
 
   useEffectOnce(() => {
     yDoc.current = new Y.Doc();
     webrtc.current = new WebrtcProvider("drawer-room", yDoc.current);
     yArray.current = yDoc.current.getArray<DrawnElement>("drawn element list");
+    setInitialized(true);
     return () => {
       yDoc.current?.destroy();
       webrtc.current?.destroy();
@@ -44,12 +54,44 @@ export default function D3Drawer() {
     [],
   );
 
+  const onAwarenessChange = useCallback(() => {
+    if (!webrtc.current || !yDoc.current) {
+      return;
+    }
+    const states = webrtc.current.awareness.getStates();
+    const newPointers: Pointer[] = [];
+    states.forEach((val, key) => {
+      if (key === yDoc.current?.clientID) {
+        return;
+      }
+      const awareness = parseAwareness(val);
+      newPointers.push({
+        clientId: key,
+        user: awareness.user,
+        position: awareness.position,
+        pressed: awareness.position?.pressed,
+      });
+    });
+    setPointers(newPointers);
+  }, []);
+
   useEffect(() => {
-    yArray.current?.observe(onYArrayChange);
-    return () => {
-      yArray.current?.unobserve(onYArrayChange);
-    };
-  }, [onYArrayChange]);
+    if (initialized && yArray.current && webrtc.current) {
+      yArray.current.observe(onYArrayChange);
+      webrtc.current.awareness.on("change", onAwarenessChange);
+      const currentNum = Array.from(
+        webrtc.current.awareness.getStates().keys(),
+      ).length;
+      webrtc.current.awareness.setLocalStateField(FIELD_NAMES.user, {
+        name: Math.random().toString(),
+        color: getColor(currentNum),
+      });
+      return () => {
+        yArray.current?.unobserve(onYArrayChange);
+        webrtc.current?.awareness.off("change", onAwarenessChange);
+      };
+    }
+  }, [initialized, onAwarenessChange, onYArrayChange]);
 
   const handleStartDrawing = useCallback((e: PointerEvent<SVGSVGElement>) => {
     setDrawing(true);
@@ -64,20 +106,41 @@ export default function D3Drawer() {
     });
   }, []);
 
-  const handleDrawElement = useCallback(
-    (points: Array<{ x: number; y: number }> | undefined) => {
-      setTrackedPoints(points);
-      setDrawingElement((x) => {
-        if (x?.elementName === "path") {
-          return { ...x, d: toPathData(points) };
-        }
-        return undefined;
+  const drawElement = useCallback((points: Point[] | undefined) => {
+    setTrackedPoints(points);
+    setDrawingElement((x) => {
+      if (x?.elementName === "path") {
+        return { ...x, d: toPathData(points) };
+      }
+      return undefined;
+    });
+  }, []);
+
+  const updateAwareness = useCallback(
+    (point: Point) => {
+      if (!webrtc.current) {
+        return;
+      }
+      webrtc.current.awareness.setLocalStateField(FIELD_NAMES.position, {
+        ...point,
+        pressed: drawing,
       });
     },
-    [],
+    [drawing],
   );
 
-  const handleFinishDrawing = useTransaction(
+  const handlePointerMove = useCallback(
+    (e: PointerEvent<SVGSVGElement>, points?: Point[]) => {
+      const point = getRelativePosition(ref, e);
+      if (drawing) {
+        drawElement(points?.concat(point));
+      }
+      updateAwareness(point);
+    },
+    [drawElement, drawing, updateAwareness],
+  );
+
+  const pushElementToYArray = useTransaction(
     yDoc,
     useCallback((elem: DrawnElement | undefined) => {
       setDrawing(false);
@@ -88,22 +151,34 @@ export default function D3Drawer() {
     }, []),
   );
 
+  const handlePointerUp = useCallback(
+    (elem?: DrawnElement) => {
+      if (drawing && elem) {
+        pushElementToYArray(elem);
+      }
+    },
+    [drawing, pushElementToYArray],
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    if (!webrtc.current) {
+      return;
+    }
+    webrtc.current.awareness.setLocalStateField(
+      FIELD_NAMES.position,
+      undefined,
+    );
+  }, []);
+
   return (
     <svg
       ref={ref}
       width="100%"
       height="100%"
       onPointerDown={handleStartDrawing}
-      onPointerUp={() => {
-        if (drawing) {
-          handleFinishDrawing(drawingElement);
-        }
-      }}
-      onPointerMove={(e) => {
-        if (drawing) {
-          handleDrawElement(trackedPoints?.concat(getRelativePosition(ref, e)));
-        }
-      }}
+      onPointerUp={() => handlePointerUp(drawingElement)}
+      onPointerMove={(e) => handlePointerMove(e, trackedPoints)}
+      onPointerLeave={handlePointerLeave}
     >
       {data.length > 0
         ? data.map((x, i) => (
@@ -116,8 +191,25 @@ export default function D3Drawer() {
           {...drawingElement}
         />
       )}
+      {pointers.length > 0
+        ? pointers.map((x) =>
+            x.position ? (
+              <circle
+                key={x.clientId}
+                cx={x.position?.x}
+                cy={x.position?.y}
+                r={x.pressed ? 10 : 5}
+                fill={x.user?.color ?? "red"}
+              />
+            ) : undefined,
+          )
+        : undefined}
     </svg>
   );
+}
+
+function getColor(i: number) {
+  return d3.schemeCategory10[i % d3.schemeCategory10.length];
 }
 
 function getRelativePosition(ref: RefObject<Element | null>, e: PointerEvent) {
@@ -128,7 +220,7 @@ function getRelativePosition(ref: RefObject<Element | null>, e: PointerEvent) {
   };
 }
 
-function toPathData(points: Array<{ x: number; y: number }> | undefined) {
+function toPathData(points: Point[] | undefined) {
   const path = d3.path();
   if (!points || points.length < 1) {
     return "";
